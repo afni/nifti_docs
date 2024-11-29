@@ -1,0 +1,20 @@
+name: sphinxdocs            # To make:  conda env create -f env*sphinxdocs.yml
+channels:
+  - conda-forge
+dependencies:
+  - cloud_sptheme
+  - pandoc
+  - pbr
+  - pip
+  - python
+  - pandas
+  - scipy
+  - "sphinx<6.0"          # PT: sidebar breaks for newer ver
+  - sphinx-argparse
+  - sphinxcontrib-fulltoc
+  - sphinx-copybutton
+  - sphinx-toolbox
+  - sphinxcontrib-serializinghtml
+  - tcsh
+  - pip:
+    - sphinxcontrib-programoutput

@@ -6,6 +6,7 @@
   of NIfTI (Neuroimaging Informatics Technology Initiative)
   documentation notes.
 
+
 ### Getting your Linux computer setup ###
 
 * You should have Python 3.[something] as your installed Python
@@ -16,23 +17,23 @@
 
   * ... and then using the attached ``environment_sphinxdocs.yml`` file:
 
-    ```
-    conda env create -f environment_sphinxdocs.yml
-    ```
+        ```
+        conda env create -f environment_sphinxdocs.yml
+        ```
 
 ### Building Sphinx: converting RST -> HTML ###
 
 * In the main directory where you are editing files, type:
 
-  ```
-  make html
-  ```
+      ```
+      make html
+      ```
       
 * To view the subsequent HTML tree, type:
   
-  ```
-  firefox _build/html/index.html
-  ```
+    ```
+    firefox _build/html/index.html
+    ```
 
 * Note for convenience, we have added a script called
   "do_build_nifti_docs_from_git.tcsh" that can be run to copy
