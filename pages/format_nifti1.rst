@@ -551,9 +551,10 @@ What is a quaternion?
 .. by: (Bob Cox)
 
 A quaternion is a mathematical object that contains 4 real
-numbers. Historically, quaternions were discovered by William Rowan
-Hamilton in 1843. This antedates the discovery of vectors and
-matrices, which are more widely taught in modern times.
+numbers. Historically, quaternions were discovered by `William Rowan
+Hamilton <https://en.wikipedia.org/wiki/William_Rowan_Hamilton>`_
+in 1843. This antedates the discovery of vectors and matrices, which
+are more widely taught in modern times.
 
 Like real and complex numbers, quaternions can be added and
 multiplied. Unlike real and complex numbers, the order in which
@@ -598,3 +599,453 @@ only requires 4 floats (16 bytes) to specify, but a 3x3 matrix
 requires 9 floats (36 bytes). The nifti1_io.c I/O library contains
 functions to convert quaternions to rotation matrices, and vice-versa.
 
+What alignment information is stored in the NIfTI-1 header? 
+-----------------------------------------------------------
+
+.. by: (Christian Haselgrove)
+
+Volume orientation is given by a transformation that maps voxel
+indices (i,j,k) to spatial coordinates (x,y,z), typically anatomical
+coordinates assigned by the scanner. This transformation ("Method 2"
+in the nifti1.h documentation) is generated using the voxel
+dimensions, a quaternion encoding a rotation matrix, and a 3D shift,
+all stored in the NIfTI-1 header; details can be found in the nifti1.h
+comments.
+
+The NIfTI-1 header also provides for a general affine transformation,
+separate from that described by Method 2. This transformation ("Method
+3") also maps voxel indices (i,j,k) to (x,y,z), which in this case are
+typically coordinates in a standard space such as the Talairach
+space. The elements of this transformation matrix are stored in the
+NIfTI-1 header. For example, the Method 2 transformation can be
+constructed from the attributes from a set of DICOM files; the Method
+3 transform can be computed offline and inserted into the header
+later.
+
+The exact "meaning" of the coordinates given by the Method 2 and
+Method 3 transformations is recorded in header fields qform_code and
+sform_code, respectively. Code values can indicate if the (x,y,z) axes
+are:
+
+* Anatomical coordinaes from the scanner (e.g., the DICOM header)
+    
+* Aligned to some anatomical "truth" or standard
+    
+* Aligned and warped to Talairach-Tournoux coordinates
+    
+* Aligned and warped to MNI-152 coordinates
+
+It is possible that neither transformation is specified (i.e.,
+qform_code=sform_code=0), in which case we are left with the voxel
+size in pixdim[], and no orientation is given or assumed. This use
+("Method 1") is discouraged.
+
+
+Does NIfTI-1 support a single file format for header and data? 
+--------------------------------------------------------------
+
+.. by: (Bob Cox)
+
+**Yes.** In this format, the 348 byte header comes first in the
+file. The image data follows. The image data offset in the file is
+specified by the vox_offset field in the header. Note that the magic
+field for a single file is "n+1", whereas that for a double file is
+"ni1". This means that it is the contents of the header that
+determines if the data is stored in the same file as the header or a
+different file. The filename itself (``*.hdr`` or ``*.nii``) does not
+necessarily specify the double or single storage format.
+
+In principle, one could put arbitrary information between the header
+and the image data, by making vox_offset be larger than 352. This is
+not recommended. Such a file would not be compatible or portable,
+which is the entire point of the NIfTI-1 effort.  **However:** also see
+:ref:`this question <format_nifti1_q_custom>`!
+
+We recommend the use of the suffix ``.nii`` for a single header+data
+NIfTI-1 format file. This suffix does not have any previous meaning
+attached, unlike the more obvious ``.nif`` (Navy Image File). 
+
+.. comment: link no longer working?
+
+   For more information on connotations of various suffixes that start
+   with "n", see http://www.icdatamaster.com/n.html.
+
+
+Why does NIfTI-1 allow for two coordinate systems (the qform and sform)?
+------------------------------------------------------------------------- 
+
+.. by: (Mark Jenkinson)
+
+The basic idea behind having two coordinate systems is to allow the
+image to store information about (1) the scanner coordinate system
+used in the acquisition of the volume (in the qform) and (2) the
+relationship to a standard coordinate system - e.g. MNI coordinates
+(in the sform).
+
+The qform allows orientation information to be kept for alignment
+purposes without losing volumetric information, since the qform only
+stores a rigid-body transformation which preserves volume. On the
+other hand, the sform stores a general affine transformation which can
+map the image coordinates into a standard coordinate system, like
+Talairach or MNI, without the need to resample the image.
+
+By having both coordinate systems, it is possible to keep the original
+data (without resampling), along with information on how it was
+acquired (qform) and how it relates to other images via a standard
+space (sform). This ability is advantageous for many analysis
+pipelines, and has previously required storing additional files along
+with the image files. By using NIfTI-1 this extra information can be
+kept in the image files themselves.
+
+**Note:** the qform and sform also store information on whether the
+coordinate system is left-handed or right-handed (see Q15) and so when
+both are set they must be consistent, otherwise the handedness of the
+coordinate system (often used to distinguish left-right order) is
+unknown and the results of applying operations to such an image are
+unspecified.
+
+
+How is the timing of acquisition encoded in the NIfTI-1 header?
+----------------------------------------------------------------
+
+.. by: (Bob Cox)
+
+For a few purposes, it is important to know the order and timing of
+the MRI slice acquisition. The NIfTI-1.1 header contains several
+fields that can be used to specify this type of information:
+
+* **freq_dim, phase_dim, and slice_dim**: These fields encode which
+  spatial dimension (1, 2, or 3) corresponds to which acquisition
+  dimension for MRI data. Two examples: Rectangular scan multi-slice
+  EPI:
+
+  * Rectangular scan multi-slice EPI:
+
+    .. code-block:: none
+
+       freq_dim  = 1  
+       phase_dim = 2  
+       slice_dim = 3
+
+    \.\.\. or some permutation of these.
+
+  * Spiral scan multi-slice EPI: 
+
+    .. code-block:: none
+
+       freq_dim  = 0
+       phase_dim = 0  
+       slice_dim = 3
+       
+    \.\.\. since the concepts of frequency- and phase-encoding directions
+    don't apply to spiral scan.
+
+  * In many cases, ``freq_dim=1``, ``phase_dim=2``, and
+    ``slice_dim=3`` will make sense; however, the provision of these
+    codes means that it isn't necessary to store the slices in the
+    NIfTI-1.1 in the same physical layout in which they were acquired.
+
+  * The fields ``freq_dim``, ``phase_dim`` and ``slice_dim`` are all
+    squished into the single byte field ``dim_info`` (2 bits each,
+    since the values for each field are limited to the range
+    ``0..3``). This unpleasantness is due to lack of space in the 348
+    byte allowance.
+
+  * The C macros ``DIM_INFO_TO_FREQ_DIM``, ``DIM_INFO_TO_PHASE_DIM``
+    and ``DIM_INFO_TO_SLICE_DIM`` can be used to extract these values
+    from the ``dim_info`` byte.
+
+  * The C macro ``FPS_INTO_DIM_INFO`` can be used to put these 3 values
+    into the dim_info byte.
+
+* **slice_duration**: If this value is positive, and if ``slice_dim``
+  is nonzero, then ``slice_duration`` indicates the amount of time used to
+  acquire one slice.
+
+  * ``slice_duration * dim[slice_dim]`` can be less than ``pixdim[4]``
+    with a clustered acquisition method, for example.
+
+* **slice_code**: If this value is nonzero, and if slice_dim is
+  nonzero, and if slice_duration is positive, then slice_code
+  indicates the timing pattern of the slice acquisition. The following
+  codes are defined:
+
+  * ``NIFTI_SLICE_SEQ_INC == sequential increasing``
+
+  * ``NIFTI_SLICE_SEQ_DEC == sequential decreasing``
+
+  * ``NIFTI_SLICE_ALT_INC == alternating increasing``
+
+  * ``NIFTI_SLICE_ALT_DEC == alternating decreasing``
+
+  * ``NIFTI_SLICE_ALT_INC2 == alternating increasing #2``
+
+  * ``NIFTI_SLICE_ALT_DEC2 == alternating decreasing #2``
+
+
+* **slice_start and slice_end**: These values indicate the start and
+  end of the slice acquisition pattern, when ``slice_code`` is
+  nonzero.
+
+  * These values are present to allow for the possible addition of
+    "padded" slices at either end of the volume, which don't fit into
+    the slice timing pattern.
+
+  * If there are no padding slices, then ``slice_start=0`` and
+    ``slice_end=dim[slice_dim]-1`` are the correct values.
+
+  * For these values to be meaningful, ``slice_start`` must be
+    non-negative and ``slice_end`` must be greater than
+    ``slice_start`` and less than ``dim[slice_code]``.
+
+  * The following table indicates the slice timing pattern, relative
+    to ``time=0`` for the first slice acquired, for some sample
+    cases. Here, ``dim[slice_dim]=7`` (there are seven slices, labeled
+    ``0..6``), ``slice_duration=0.1``, and ``slice_start=1``,
+    ``slice_end=5`` (one padded slice on each end).
+
+    .. code-block:: none
+
+       slice index  SEQ_INC  SEQ_DEC  ALT_INC  ALT_DEC  ALT_INC2  ALT_DEC2
+            6         n/a      n/a      n/a      n/a      n/a       n/a
+            5         0.4      0.0      0.2      0.0      0.4       0.2
+            4         0.3      0.1      0.4      0.3      0.1       0.0
+            3         0.2      0.2      0.1      0.1      0.3       0.3
+            2         0.1      0.3      0.3      0.4      0.0       0.1
+            1         0.0      0.4      0.0      0.2      0.2       0.4
+            0         n/a      n/a      n/a      n/a      n/a       n/a
+
+      'n/a' = 'not applicable' 
+
+  * The SEQ values for slice_code are sequential ordering (uncommon
+    but not unknown), either increasing in slice number or decreasing
+    (INC or DEC), as illustrated above.
+
+  * The ALT values for slice_code are alternating ordering.
+
+    * The 'standard' way for these to operate (without the '2' on the
+      end) is for the slice timing to start at the edge of the
+      ``slice_start .. slice_end`` group (at ``slice_start`` for INC
+      and at ``slice_end`` for DEC).
+    
+    * With the ``ALT_*2`` values for slice_code, the slice timing
+      instead starts at the first slice in from the edge (at
+      ``slice_start+1`` for INC2 and at ``slice_end-1`` for
+      DEC2). This latter acquisition scheme is found on some Siemens
+      scanners.
+
+
+ No doubt this is all a little confusing. There are threee concepts to grasp:
+
+1. ordering of the spatial dimensions in the image array relative to acquisition,
+
+#. time it takes to acquire a single slice,
+    
+#. and time-ordering of the slice acquisition within the ``slice_dim``
+   direction (including the possibility of 'padded' slices that don't
+   have an acquisition time order).
+
+
+.. _format_nifti1_q_custom:
+
+How can I add customized (extension) data to the NIfTI-1 header? 
+----------------------------------------------------------------
+
+.. by: (Bob Cox)
+
+There are two phases to this answer: clarifying where the image data
+is stored, and then discussing the NIfTI-1.1 approved way of storing
+information after the 348 byte header (and before the image data in a
+``.nii`` file).
+
+**Clarifying vox_offset**
+
+Of primary importance is the issue of where extended header data will
+be stored, and how a program is to know what is header data and what
+is image data. In NIfTI-1.1, the location of the image data is
+specified by the vox_offset header field. There are two cases:
+
+* In a ``.nii`` file, the vox_offset field value is the start location
+  of the image data bytes in that file.
+    
+* In a ``.hdr/.img`` file pair, the vox_offset field value is the
+  start location of the image data bytes in the ``.img`` file.
+
+All data at and after the vox_offset location is taken to be image
+data. Furthermore, the following limitations apply to the value of
+``vox_offset``:
+
+* If vox_offset is less than 352 in a ``.nii`` file, it is equivalent to
+  352 (i.e., image data never starts before byte #352 in a ``.nii`` file).
+    
+* The default value for ``vox_offset`` in a ``.nii`` file is 352; in a
+  ``.hdr`` file it is 0. The default value applies if the header
+  vox_offset value is illegal (e.g., non-positive).
+    
+* ``vox_offset`` should be an integer multiple of 16; otherwise, some
+  programs may not work properly (e.g., SPM). This constraint is to
+  allow memory-mapped input to be properly byte-aligned. However, this
+  multiple-of-16 constraint is a suggestion, not a strict requirement.
+
+
+Note that since ``vox_offset`` is an IEEE-754 32-bit float (for
+compatibility with the ANALYZE-7.5 format), it effectively has a
+24-bit mantissa. All integers from 0 to 224 can be represented exactly
+in this format, but not all larger integers are exactly storable as
+IEEE-754 32-bit floats. However, unless you plan to have
+``vox_offset`` be potentially larger than 16 MB, this limitation
+should not be an issue. (Actually, any integral multiple of 16 up to
+227 can be represented exactly in the IEEE-754 format, which allows
+for up to 128 MB of random information before the image data. If this
+limit is not enough, perhaps the NIfTI-1.1 format is not right for
+your application.)
+
+In a ``.img`` file (i.e., image data stored separately from the
+NIfTI-1.1 header), data bytes between #0 and #vox_offset-1 (inclusive)
+are completely undefined and unregulated by the NIfTI-1.1
+standard. One potential use of having vox_offset > 0 in the ``.hdr/.img``
+file pair storage method is to make the ``.img`` file be a copy of (or
+link to) a pre-existing image file in some other format, such as
+DICOM; then vox_offset would be set to the offset of the image data in
+this file. (It may not be possible to follow the multiple-of-16 rule
+with an arbitrary external file; using the NIfTI-1.1 format in such a
+case may lead to a file that is incompatible with software that relies
+on vox_offset being a multiple of 16.)
+
+In a ``.nii`` file, data bytes between #348 and #vox_offset-1
+(inclusive) may be used to store user-defined extra information;
+similarly, in a ``.hdr`` file, any data bytes after byte #347 are
+available for user-defined extra information. The (very weak)
+regulation of this extra header data is described next.
+
+**Extended Header Data Section(s)**
+
+The NIfTI-1.1 header struct is 348 bytes long. In a ``.nii`` file, the
+image data can start no earlier than byte #352. The four bytes
+immediately following the NIfTI-1.1 header struct (bytes #348-351
+inclusive) should be considered to be declared as follows:
+
+.. code-block:: C
+
+   unsigned char extension[4] ;
+
+After the end of the 348 byte header (e.g., after the magic field),
+the next 4 bytes are an byte array field named extension. By default,
+all 4 bytes of this array should be set to zero. In a ``.nii`` file,
+these 4 bytes will always be present, since the earliest start point
+for the image data is byte #352. In a separate ``.hdr`` file, these bytes
+may or may not be present (i.e., a ``.hdr`` file may only be 348 bytes
+long). If not present, then a NIfTI-1.1 compliant program should use
+the default value of ``extension={0,0,0,0}``. The first byte
+(``extension[0]``) is the only value of this array that is specified
+at present. The other 3 bytes are reserved for future use.
+
+If ``extension[0]`` is nonzero, it indicates that extended header
+information is present in the bytes following the extension array. In
+a ``.nii`` file, this extended header data is before the image data (and
+``vox_offset`` must be set correctly to allow for this). In a ``.hdr`` file,
+this extended data follows extension and proceeds (potentially) to the
+end of the file.
+
+The format of extended header data is only weakly specified. Each
+extension must be an integer multiple of 16 bytes long. The first 8
+bytes of each extension comprise two 4-byte integers:
+
+.. code-block:: C
+
+  int esize , ecode ;
+
+These values may need to be byte-swapped, as indicated by ``dim[0]`` for
+the rest of the NIfTI-1.1 header.
+
+* esize is the number of bytes that form the extended header data
+        
+  * esize must be a positive integral multiple of 16
+        
+  * this length includes the 8 bytes of esize and ecode themselves
+
+* ecode is a non-negative integer that indicates the format of the
+  extended header data that follows
+
+  * different ecode values are assigned to different developer groups
+    
+  * at present, the registered values for code are: 
+
+    * 0 = NIFTI_ECODE_IGNORE = unknown private format (not recommended!)
+
+    * | 2 = NIFTI_ECODE_DICOM = DICOM format (i.e., attribute tags and
+        values): 
+      | http://medical.nema.org/
+
+    * | 4 = NIFTI_ECODE_AFNI = AFNI header attributes; AFNI is described
+        at `<http://afni.nimh.nih.gov/>`_; 
+      | The format of the AFNI
+        extension in the NIfTI-1.1 format is described at **UPDATE**
+      | `<http://nifti.nimh.nih.gov/nifti-1/AFNIextension1/>`_
+
+    * 6 = NIFTI_ECODE_COMMENT = comment: arbitrary non-NUL ASCII text,
+      with no additional structure implied
+
+    * | 8 = NIFTI_ECODE_XCEDE = XCEDE metadata:
+      | `<http://www.nbirn.net/Resources/Users/Applications/xcede/index.htm>`_
+    
+    * 10 = NIFTI_ECODE_JIMDIMINFO = Dimensional information for the
+      JIM software (XML format); contact info is Dr Mark A Horsfield
+      (``mah5 _at_ leicester.ac.uk``).
+    
+    * | 12 = NIFTI_ECODE_WORKFLOW_FWDS = Fiswidget XML pipeline
+        descriptions; documented at
+      | `<http://kraepelin.wpic.pitt.edu/~fissell/NIFTI_ECODE_WORKFLOW_FWDS/NIFTI_ECODE_WORKFLOW_FWDS.html>`_;
+      | contact info is Kate Fissell (``fissell _at_ pitt.edu``).
+
+ In the interests of interoperability (a primary rationale for NIfTI),
+ groups developing software that uses this extension mechanism are
+ encouraged to document and publicize the format of their
+ extensions. To this end, the NIfTI DFWG will assign even numbered
+ codes upon request to groups submitting at least rudimentary
+ documentation for the format of their extension. The assigned codes
+ and documentation will be posted on the NIfTI website. All odd values
+ of ecode (and 0) will remain unassigned (at least, until the even
+ ones are used up, when we get to 2,147,483,646).
+
+Also in the interests of interoperability, any extension data should
+be checked for integrity. For example, an XML-formatted extension
+should be checked that it begins with the string ``"<?xml "``; if not,
+the software should skip it. In this way, databases of NIfTI-1.1 files
+that wish to anonymize files can simply fill an extension field with
+zero bytes to wipe out any information that might identify a
+subject. In such a case, the anonymizing software should change the
+ecode value to NIFTI_ECODE_IGNORE, but programs should be prepared to
+deal with zero-ed out extensions that are still marked with a nonzero
+ecode.
+
+Note that the other contents (past ecode and esize) of the extended
+header data section are totally unspecified by the NIfTI-1.1
+standard. In particular, if binary data is stored in such a section,
+its byte order is not necessarily the same as that given by examining
+``dim[0]``; it is incumbent on the programs dealing with such data to
+determine the byte order of binary extended header data.
+
+Multiple extended header sections are allowed, each starting with an
+esize,ecode value pair. The first esize value, as described above, is
+at bytes #352-355 in the ``.hdr`` or ``.nii`` file (files start at
+byte #0, just to be clear). If this esize1 value is positive, then the
+second (esize2) will be found starting at byte #352+esize1, the third
+(esize3) at byte #352+esize1+esize2, et cetera. Of course, in a ``.nii``
+file, the value of vox_offset must be compatible with these
+extensions. If a malformed file indicates that an extended header data
+section would run past vox_offset, then that entire extended header
+section should be ignored. In a ``.hdr`` file, if an extended header
+data section would run past the end-of-file, that extended header data
+should also be ignored.
+
+With the above scheme, a program can successively examine the esize
+and ecode values, and skip over each extended header section if the
+program doesnt know how to interpret the data within. Of course, any
+program can simply ignore all extended header sections simply by
+jumping straight to the image data using vox_offset.
+
+The C reference implementation for NIfTI-1.1 I/O contains several
+functions to read and write header extensions. The nifti_tool command
+line program for manipulating NIfTI-1.1 files uses these functions to
+let you examine, remove, and/or add extension data to a file.
