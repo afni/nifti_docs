@@ -5,7 +5,11 @@
 **NIfTI-1 Header Fields**
 *************************
 
-.. contents:: :local:
+
+.. comment: don't include this table here, because it is basically
+   contained in the list-table below
+
+   .. contents:: :local:
 
 
 Struct documentation
@@ -27,51 +31,51 @@ links to additional information.
      - NIfTI-1 usage
      - Analyze 7.5 field(s)
      - Byte offset
-   * - int sizeof_hdr
+   * - :ref:`int sizeof_hdr <fields_nifti1__sizeof_hdr>`
      - MUST be 348  
      - int sizeof_hdr
      - 0
-   * - char data_type[10]
+   * - :ref:`char data_type[10] <fields_nifti1__data_type>`
      - ++UNUSED++
      - char data_type[10]
      - 4
-   * - char  db_name[18]
+   * - :ref:`char db_name[18] <fields_nifti1__db_name>`
      - ++UNUSED++
      - char  db_name[18]
      - 14
-   * - int   extents
+   * - :ref:`int extents <fields_nifti1__extents>`
      - ++UNUSED++
      - int   extents
      - 32
-   * - short session_error
+   * - :ref:`short session_error <fields_nifti1__session_error>`
      - ++UNUSED++
      - short session_error
      - 36
-   * - char  regular
+   * - :ref:`char  regular <fields_nifti1__regular>`
      - ++UNUSED++
      - char  regular
      - 38
-   * - char  dim_info
+   * - :ref:`char  dim_info <fields_nifti1__dim_info>`
      - MRI slice ordering
      - char hkey_un0
      - 39
-   * - short dim[8]
+   * - :ref:`short dim[8] <fields_nifti1__dim>`
      - Data array dimensions
      - short dim[8]
      - 40
-   * - float intent_p1
+   * - :ref:`float intent_p1 <fields_nifti1__intent_p1>`
      - 1st intent parameter
      - short unused8; short unused9
      - 56
-   * - float intent_p2
+   * - :ref:`float intent_p2 <fields_nifti1__intent_p2>`
      - 2nd intent parameter
      - short unused10; short unused11
      - 60
-   * - float intent_p3
+   * - :ref:`float intent_p3 <fields_nifti1__intent_p3>`
      - 3rd intent parameter
      - short unused12; short unused13
      - 64
-   * - short intent_code
+   * - :ref:`short intent_code <fields_nifti1__intent_code>`
      - NIFTIINTENT code
      - short unused14
      - 68
@@ -200,7 +204,132 @@ links to additional information.
      - 
      - 344
 
+Comment on unused fields
+==========================
+
+*From the nifti1.h header file.*
+
+Fields that are marked as ++UNUSED++ have no particular interpretation
+in this standard.
+
+Some of the ANALYZE 7.5 fields marked as ++UNUSED++ may need to be set
+to particular values for compatibility with other programs. The issue
+of interoperability of ANALYZE 7.5 files is a murky one -- not all
+programs require exactly the same set of fields. (Unobscuring this
+murkiness is a principal motivation behind NIFTI-1.)
+
+Some of the fields that may need to be set for other (non-NIFTI aware)
+software to be happy are:
+
+* **extents**:    dbh.h says this should be 16384
+
+* **regular**: dbh.h says this should be the character 'r'
+
+* **glmin, glmax**: dbh.h says these values should be the min and max
+  voxel values for the entire dataset
+
+It is best to initialize ALL fields in the NIFTI-1 header to 0 (e.g.,
+with ``calloc()``), then fill in what is needed.
 
 
 Field notes
 =============================
+
+.. _fields_nifti1__sizeof_hdr:
+
+int sizeof_hdr
+----------------
+
+This field must be set to 348.
+
+
+.. _fields_nifti1__data_type:
+
+char data_type[10]
+-------------------
+
+Unused fields are:
+
+.. code-block:: C
+
+   char data_type[10]; (not to be confused with the datatype field...)
+   char db_name[18];
+   int extents;
+   short session_error;
+   char regular;
+
+   int glmax;
+   int glmin; 
+
+
+.. _fields_nifti1__db_name:
+
+char db_name[18]
+-----------------
+
+
+
+
+
+.. _fields_nifti1__extents:
+
+int extents
+------------
+
+
+.. _fields_nifti1__session_error:
+
+short session_error
+----------------------
+
+
+
+.. _fields_nifti1__regular:
+
+char regular
+----------------
+
+
+
+.. _fields_nifti1__dim_info:
+
+char dim_info
+----------------
+
+
+.. _fields_nifti1__dim:
+
+short dim[8]
+-------------
+
+
+.. _fields_nifti1__intent_p1:
+
+float intent_p1
+-----------------
+
+
+
+.. _fields_nifti1__intent_p2:
+
+float intent_p2
+-----------------
+
+
+
+.. _fields_nifti1__intent_p3:
+
+float intent_p3
+-----------------
+
+
+
+.. _fields_nifti1__intent_code:
+
+short intent_code
+---------------------
+
+
+
+
+
