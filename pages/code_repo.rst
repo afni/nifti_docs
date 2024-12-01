@@ -2,7 +2,7 @@
 .. _code_repo:
 
 ***************************
-**Downloading NIfTI code**
+**Downloading NIfTI Code**
 ***************************
 
 .. contents:: :local:

@@ -2,7 +2,7 @@
 .. _nifti_dfwg:
 
 *****************************
-**Original DFWG members**
+**Original DFWG Members**
 *****************************
 
 .. comment

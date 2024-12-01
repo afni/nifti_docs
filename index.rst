@@ -14,6 +14,8 @@ Welcome to the NIfTI data format documentation!
    pages/whatisnifti
    pages/code_repo
    pages/format_nifti1
+   pages/fields_nifti1
+   pages/format_nifti2
    pages/nifti_dfwg
    
 

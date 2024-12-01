@@ -539,7 +539,6 @@ by rotations alone.
 
 .. list-table:: 
    :header-rows: 0
-   :widths: 75
 
    * - .. image:: media/img_nifti1_handedness.gif
           :width: 100%
