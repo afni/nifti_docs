@@ -306,8 +306,103 @@ char dim_info
 
 (Original) nifti1.h header documentation:
 
+.. code-block:: none
+
+   /---------------------------------------------------------------------------/
+   /* MRI-SPECIFIC SPATIAL AND TEMPORAL INFORMATION:
+      ---------------------------------------------
+      A few fields are provided to store some extra information
+      that is sometimes important when storing the image data
+      from an FMRI time series experiment.  (After processing such
+      data into statistical images, these fields are not likely
+      to be useful.)
+
+     { freq_dim  } = These fields encode which spatial dimension (1,2, or 3)
+     { phase_dim } = corresponds to which acquisition dimension for MRI data.
+     { slice_dim } =
+       Examples:
+         Rectangular scan multi-slice EPI:
+           freq_dim = 1  phase_dim = 2  slice_dim = 3  (or some permutation)
+         Spiral scan multi-slice EPI:
+           freq_dim = phase_dim = 0  slice_dim = 3
+           since the concepts of frequency- and phase-encoding directions
+           don't apply to spiral scan
+
+       slice_duration = If this is positive, AND if slice_dim is nonzero,
+                        indicates the amount of time used to acquire 1 slice.
+                        slice_duration*dim[slice_dim] can be less than pixdim[4]
+                        with a clustered acquisition method, for example.
+
+       slice_code = If this is nonzero, AND if slice_dim is nonzero, AND
+                    if slice_duration is positive, indicates the timing
+                    pattern of the slice acquisition.  The following codes
+                    are defined:
+                      NIFTI_SLICE_SEQ_INC
+                      NIFTI_SLICE_SEQ_DEC
+                      NIFTI_SLICE_ALT_INC
+                      NIFTI_SLICE_ALT_DEC
+     { slice_start } = Indicates the start and end of the slice acquisition
+     { slice_end   } = pattern, when slice_code is nonzero.  These values
+                       are present to allow for the possible addition of
+                       "padded" slices at either end of the volume, which
+                       don't fit into the slice timing pattern.  If there
+                       are no padding slices, then slice_start=0 and
+                       slice_end=dim[slice_dim]-1 are the correct values.
+                       For these values to be meaningful, slice_start must
+                       be non-negative and slice_end must be greater than
+                       slice_start.
+
+
+     The following table indicates the slice timing pattern, relative to
+     time=0 for the first slice acquired, for some sample cases.  Here,
+     dim[slice_dim]=7 (there are 7 slices, labeled 0..6), slice_duration=0.1,
+     and slice_start=1, slice_end=5 (1 padded slice on each end).
+
+       slice
+       index   SEQ_INC SEQ_DEC ALT_INC ALT_DEC
+         6  --   n/a     n/a     n/a     n/a     n/a = not applicable
+         5  --   0.4     0.0     0.2     0.0           (slice time offset
+         4  --   0.3     0.1     0.4     0.3            doesn't apply to
+         3  --   0.2     0.2     0.1     0.1            slices outside range
+         2  --   0.1     0.3     0.3     0.4            slice_start..slice_end)
+         1  --   0.0     0.4     0.0     0.2
+         0  --   n/a     n/a     n/a     n/a
+
+
+     The fields freq_dim, phase_dim, slice_dim are all squished into the single
+     byte field dim_info (2 bits each, since the values for each field are
+     limited to the range 0..3).  This unpleasantness is due to lack of space
+     in the 348 byte allowance.
+
+     The macros DIM_INFO_TO_FREQ_DIM, DIM_INFO_TO_PHASE_DIM, and
+     DIM_INFO_TO_SLICE_DIM can be used to extract these values from the
+     dim_info byte.
+
+     The macro FPS_INTO_DIM_INFO can be used to put these 3 values
+     into the dim_info byte.
+
+Defined codes:
+
 .. code-block:: C
 
+   #define NIFTI_SLICE_UNKNOWN  0
+   #define NIFTI_SLICE_SEQ_INC  1
+   #define NIFTI_SLICE_SEQ_DEC  2
+   #define NIFTI_SLICE_ALT_INC  3
+   #define NIFTI_SLICE_ALT_DEC  4
+
+Miscellaneous C macros:
+
+.. code-block:: C
+
+   #define DIM_INFO_TO_FREQ_DIM(di)   ( ((di)     ) & 0x03 )
+   #define DIM_INFO_TO_PHASE_DIM(di)  ( ((di) >> 2) & 0x03 )
+   #define DIM_INFO_TO_SLICE_DIM(di)  ( ((di) >> 4) & 0x03 )
+
+
+   #define FPS_INTO_DIM_INFO(fd,pd,sd) ( ( ( ((char)(fd)) & 0x03)      ) |  \
+                                         ( ( ((char)(pd)) & 0x03) << 2 ) |  \
+                                         ( ( ((char)(sd)) & 0x03) << 4 )  )
 
 
 
@@ -315,6 +410,162 @@ char dim_info
 
 short dim[8]
 -------------
+
+(Original) nifti1.h header documentation:
+
+.. code-block:: none
+
+   /---------------------------------------------------------------------------/
+   /* DATA DIMENSIONALITY (as in ANALYZE 7.5):
+      ---------------------------------------
+        dim[0] = number of dimensions;
+                 - if dim[0] is outside range 1..7, then the header information
+                   needs to be byte swapped appropriately
+                 - ANALYZE supports dim[0] up to 7, but NIFTI-1 reserves
+                   dimensions 1,2,3 for space (x,y,z), 4 for time (t), and
+                   5,6,7 for anything else needed.
+
+        dim[i] = length of dimension #i, for i=1..dim[0]  (must be positive)
+                 - also see the discussion of intent_code, far below
+
+        pixdim[i] = voxel width along dimension #i, i=1..dim[0] (positive)
+                    - cf. ORIENTATION section below for use of pixdim[0]
+                    - the units of pixdim can be specified with the xyzt_units
+                      field (also described far below).
+
+      Number of bits per voxel value is in bitpix, which MUST correspond with
+      the datatype field.  The total number of bytes in the image data is
+        dim[1]  ...  dim[dim[0]] * bitpix / 8
+
+      In NIFTI-1 files, dimensions 1,2,3 are for space, dimension 4 is for time,
+      and dimension 5 is for storing multiple values at each spatiotemporal
+      voxel.  Some examples:
+        - A typical whole-brain FMRI experiment's time series:
+           - dim[0] = 4
+           - dim[1] = 64   pixdim[1] = 3.75 xyzt_units =  NIFTI_UNITS_MM
+           - dim[2] = 64   pixdim[2] = 3.75             | NIFTI_UNITS_SEC
+           - dim[3] = 20   pixdim[3] = 5.0
+           - dim[4] = 120  pixdim[4] = 2.0
+        - A typical T1-weighted anatomical volume:
+           - dim[0] = 3
+           - dim[1] = 256  pixdim[1] = 1.0  xyzt_units = NIFTI_UNITS_MM
+           - dim[2] = 256  pixdim[2] = 1.0
+           - dim[3] = 128  pixdim[3] = 1.1
+        - A single slice EPI time series:
+           - dim[0] = 4
+           - dim[1] = 64   pixdim[1] = 3.75 xyzt_units =  NIFTI_UNITS_MM
+           - dim[2] = 64   pixdim[2] = 3.75             | NIFTI_UNITS_SEC
+           - dim[3] = 1    pixdim[3] = 5.0
+           - dim[4] = 1200 pixdim[4] = 0.2
+        - A 3-vector stored at each point in a 3D volume:
+           - dim[0] = 5
+           - dim[1] = 256  pixdim[1] = 1.0  xyzt_units = NIFTI_UNITS_MM
+           - dim[2] = 256  pixdim[2] = 1.0
+           - dim[3] = 128  pixdim[3] = 1.1
+           - dim[4] = 1    pixdim[4] = 0.0
+           - dim[5] = 3                     intent_code = NIFTI_INTENT_VECTOR
+        - A single time series with a 3x3 matrix at each point:
+           - dim[0] = 5
+           - dim[1] = 1                     xyzt_units = NIFTI_UNITS_SEC
+           - dim[2] = 1
+           - dim[3] = 1
+           - dim[4] = 1200 pixdim[4] = 0.2
+           - dim[5] = 9                     intent_code = NIFTI_INTENT_GENMATRIX
+           - intent_p1 = intent_p2 = 3.0    (indicates matrix dimensions)
+
+      BYTE ORDERING:
+      -------------
+      The byte order of the data arrays is presumed to be the same as the byte
+      order of the header (which is determined by examining dim[0]).
+
+      VECTOR-VALUED DATASETS:
+      ----------------------
+      The 5th dimension of the dataset, if present (i.e., dim[0]=5 and
+      dim[5] > 1), contains multiple values (e.g., a vector) to be stored
+      at each spatiotemporal location.  For example, the header values
+       - dim[0] = 5
+       - dim[1] = 64
+       - dim[2] = 64
+       - dim[3] = 20
+       - dim[4] = 1     (indicates no time axis)
+       - dim[5] = 3
+       - datatype = DT_FLOAT
+       - intent_code = NIFTI_INTENT_VECTOR
+      mean that this dataset should be interpreted as a 3D volume (64x64x20),
+      with a 3-vector of floats defined at each point in the 3D grid.
+
+      A program reading a dataset with a 5th dimension may want to reformat
+      the image data to store each voxels' set of values together in a struct
+      or array.  This programming detail, however, is beyond the scope of the
+      NIFTI-1 file specification!  Uses of dimensions 6 and 7 are also not
+      specified here.
+
+      STATISTICAL PARAMETRIC DATASETS (i.e., SPMs):
+      --------------------------------------------
+      Values of intent_code from NIFTI_FIRST_STATCODE to NIFTI_LAST_STATCODE
+      (inclusive) indicate that the numbers in the dataset should be interpreted
+      as being drawn from a given distribution.  Most such distributions have
+      auxiliary parameters (e.g., NIFTI_INTENT_TTEST has 1 DOF parameter).
+
+      If the dataset DOES NOT have a 5th dimension, then the auxiliary parameters
+      are the same for each voxel, and are given in header fields intent_p1,
+      intent_p2, and intent_p3.
+
+      If the dataset DOES have a 5th dimension, then the auxiliary parameters
+      are different for each voxel.  For example, the header values
+       - dim[0] = 5
+       - dim[1] = 128
+       - dim[2] = 128
+       - dim[3] = 1      (indicates a single slice)
+       - dim[4] = 1      (indicates no time axis)
+       - dim[5] = 2
+       - datatype = DT_FLOAT
+       - intent_code = NIFTI_INTENT_TTEST
+      mean that this is a 2D dataset (128x128) of t-statistics, with the
+      t-statistic being in the first "plane" of data and the degrees-of-freedom
+      parameter being in the second "plane" of data.
+
+      If the dataset 5th dimension is used to store the voxel-wise statistical
+      parameters, then dim[5] must be 1 plus the number of parameters required
+      by that distribution (e.g., intent_code=NIFTI_INTENT_TTEST implies dim[5]
+      must be 2, as in the example just above).
+
+
+   /---------------------------------------------------------------------------/
+   /* UNITS OF SPATIAL AND TEMPORAL DIMENSIONS:
+      ----------------------------------------
+      The codes below can be used in xyzt_units to indicate the units of pixdim.
+      As noted earlier, dimensions 1,2,3 are for x,y,z; dimension 4 is for
+      time (t).
+       - If dim[4]=1 or dim[0] < 4, there is no time axis.
+       - A single time series (no space) would be specified with
+         - dim[0] = 4 (for scalar data) or dim[0] = 5 (for vector data)
+         - dim[1] = dim[2] = dim[3] = 1
+         - dim[4] = number of time points
+         - pixdim[4] = time step
+         - xyzt_units indicates units of pixdim[4]
+         - dim[5] = number of values stored at each time point
+
+      Bits 0..2 of xyzt_units specify the units of pixdim[1..3]
+       (e.g., spatial units are values 1..7).
+      Bits 3..5 of xyzt_units specify the units of pixdim[4]
+       (e.g., temporal units are multiples of 8).
+
+
+
+Miscellaneous C macros:
+
+.. code-block:: C
+
+   /! Check if a nifti_1_header struct needs to be byte swapped.
+       Returns 1 if it needs to be swapped, 0 if it does not.     /
+
+   #define NIFTI_NEEDS_SWAP(h) ( (h).dim[0] < 0 || (h).dim[0] > 7 )
+
+   /! Check if a nifti_1_header struct contains a 5th (vector) dimension.
+       Returns size of 5th dimension if > 1, returns 0 otherwise.         /
+
+   #define NIFTI_5TH_DIM(h) ( ((h).dim[0]>4 && (h).dim[5]>1) ? (h).dim[5] : 0 )
 
 
 .. _fields_nifti1__intent_p123:
@@ -333,6 +584,7 @@ distributions have auxiliary parameters (e.g., NIFTI_INTENT_TTEST has
 If the dataset DOES NOT have a 5th dimension, then the auxiliary
 parameters are the same for each voxel, and are given in header fields
 intent_p1, intent_p2, and intent_p3.
+
 
 .. _fields_nifti1__intent_code:
 
