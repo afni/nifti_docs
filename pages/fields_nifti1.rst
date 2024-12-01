@@ -22,6 +22,8 @@ written by Bob Cox (SSCC, NIMH, NIH, USA).
 These pages provide a "clickable" index to that information, and some
 links to additional information.
 
+See also this PDF description of NIFTI-1 data: :download:`The NIfTI-1
+Data Format <media/TheNIfTI1Format2004.pdf>`.
 
 .. list-table:: **struct nifti_1_header: 348 bytes total**
    :header-rows: 1
@@ -63,15 +65,15 @@ links to additional information.
      - Data array dimensions
      - short dim[8]
      - 40
-   * - :ref:`float intent_p1 <fields_nifti1__intent_p1>`
+   * - :ref:`float intent_p1 <fields_nifti1__intent_p123>`
      - 1st intent parameter
      - short unused8; short unused9
      - 56
-   * - :ref:`float intent_p2 <fields_nifti1__intent_p2>`
+   * - :ref:`float intent_p2 <fields_nifti1__intent_p123>`
      - 2nd intent parameter
      - short unused10; short unused11
      - 60
-   * - :ref:`float intent_p3 <fields_nifti1__intent_p3>`
+   * - :ref:`float intent_p3 <fields_nifti1__intent_p123>`
      - 3rd intent parameter
      - short unused12; short unused13
      - 64
@@ -204,6 +206,8 @@ links to additional information.
      - 
      - 344
 
+.. _fields_nifti1_unused:
+
 Comment on unused fields
 ==========================
 
@@ -231,6 +235,19 @@ software to be happy are:
 It is best to initialize ALL fields in the NIFTI-1 header to 0 (e.g.,
 with ``calloc()``), then fill in what is needed.
 
+Unused fields are:
+
+.. code-block:: C
+
+   char data_type[10]; (not to be confused with the datatype field...)
+   char db_name[18];
+   int extents;
+   short session_error;
+   char regular;
+
+   int glmax;
+   int glmin; 
+
 
 Field notes
 =============================
@@ -248,27 +265,14 @@ This field must be set to 348.
 char data_type[10]
 -------------------
 
-Unused fields are:
-
-.. code-block:: C
-
-   char data_type[10]; (not to be confused with the datatype field...)
-   char db_name[18];
-   int extents;
-   short session_error;
-   char regular;
-
-   int glmax;
-   int glmin; 
-
+See :ref:`fields_nifti1_unused`.
 
 .. _fields_nifti1__db_name:
 
 char db_name[18]
 -----------------
 
-
-
+See :ref:`fields_nifti1_unused`.
 
 
 .. _fields_nifti1__extents:
@@ -276,12 +280,15 @@ char db_name[18]
 int extents
 ------------
 
+See :ref:`fields_nifti1_unused`.
+
 
 .. _fields_nifti1__session_error:
 
 short session_error
 ----------------------
 
+See :ref:`fields_nifti1_unused`.
 
 
 .. _fields_nifti1__regular:
@@ -289,12 +296,19 @@ short session_error
 char regular
 ----------------
 
+See :ref:`fields_nifti1_unused`.
 
 
 .. _fields_nifti1__dim_info:
 
 char dim_info
 ----------------
+
+(Original) nifti1.h header documentation:
+
+.. code-block:: C
+
+
 
 
 .. _fields_nifti1__dim:
@@ -303,33 +317,118 @@ short dim[8]
 -------------
 
 
-.. _fields_nifti1__intent_p1:
+.. _fields_nifti1__intent_p123:
 
-float intent_p1
------------------
+float intent_p1, intent_p2, intent_p3
+--------------------------------------------
 
+Re. STATISTICAL PARAMETRIC DATASETS (i.e., SPMs):
 
+Values of intent_code from NIFTI_FIRST_STATCODE to NIFTI_LAST_STATCODE
+(inclusive) indicate that the numbers in the dataset should be
+interpreted as being drawn from a given distribution. Most such
+distributions have auxiliary parameters (e.g., NIFTI_INTENT_TTEST has
+1 DOF parameter).
 
-.. _fields_nifti1__intent_p2:
-
-float intent_p2
------------------
-
-
-
-.. _fields_nifti1__intent_p3:
-
-float intent_p3
------------------
-
-
+If the dataset DOES NOT have a 5th dimension, then the auxiliary
+parameters are the same for each voxel, and are given in header fields
+intent_p1, intent_p2, and intent_p3.
 
 .. _fields_nifti1__intent_code:
 
 short intent_code
 ---------------------
 
+Description from the original nifti1.h header file:
 
+.. code-block:: none
+
+   /---------------------------------------------------------------------------/
+   /* INTERPRETATION OF VOXEL DATA:
+      ----------------------------
+      The intent_code field can be used to indicate that the voxel data has
+      some particular meaning.  In particular, a large number of codes is
+      given to indicate that the the voxel data should be interpreted as
+      being drawn from a given probability distribution.
+
+      VECTOR-VALUED DATASETS:
+      ----------------------
+      The 5th dimension of the dataset, if present (i.e., dim[0]=5 and
+      dim[5] > 1), contains multiple values (e.g., a vector) to be stored
+      at each spatiotemporal location.  For example, the header values
+       - dim[0] = 5
+       - dim[1] = 64
+       - dim[2] = 64
+       - dim[3] = 20
+       - dim[4] = 1     (indicates no time axis)
+       - dim[5] = 3
+       - datatype = DT_FLOAT
+       - intent_code = NIFTI_INTENT_VECTOR
+      mean that this dataset should be interpreted as a 3D volume (64x64x20),
+      with a 3-vector of floats defined at each point in the 3D grid.
+
+      A program reading a dataset with a 5th dimension may want to reformat
+      the image data to store each voxels' set of values together in a struct
+      or array.  This programming detail, however, is beyond the scope of the
+      NIFTI-1 file specification!  Uses of dimensions 6 and 7 are also not
+      specified here.
+
+      STATISTICAL PARAMETRIC DATASETS (i.e., SPMs):
+      --------------------------------------------
+      Values of intent_code from NIFTI_FIRST_STATCODE to NIFTI_LAST_STATCODE
+      (inclusive) indicate that the numbers in the dataset should be interpreted
+      as being drawn from a given distribution.  Most such distributions have
+      auxiliary parameters (e.g., NIFTI_INTENT_TTEST has 1 DOF parameter).
+
+      If the dataset DOES NOT have a 5th dimension, then the auxiliary parameters
+      are the same for each voxel, and are given in header fields intent_p1,
+      intent_p2, and intent_p3.
+
+      If the dataset DOES have a 5th dimension, then the auxiliary parameters
+      are different for each voxel.  For example, the header values
+       - dim[0] = 5
+       - dim[1] = 128
+       - dim[2] = 128
+       - dim[3] = 1      (indicates a single slice)
+       - dim[4] = 1      (indicates no time axis)
+       - dim[5] = 2
+       - datatype = DT_FLOAT
+       - intent_code = NIFTI_INTENT_TTEST
+      mean that this is a 2D dataset (128x128) of t-statistics, with the
+      t-statistic being in the first "plane" of data and the degrees-of-freedom
+      parameter being in the second "plane" of data.
+
+      If the dataset 5th dimension is used to store the voxel-wise statistical
+      parameters, then dim[5] must be 1 plus the number of parameters required
+      by that distribution (e.g., intent_code=NIFTI_INTENT_TTEST implies dim[5]
+      must be 2, as in the example just above).
+
+      Note: intent_code values 2..10 are compatible with AFNI 1.5x (which is
+      why there is no code with value=1, which is obsolescent in AFNI).
+
+      OTHER INTENTIONS:
+      ----------------
+      The purpose of the intent_* fields is to help interpret the values
+      stored in the dataset.  Some non-statistical values for intent_code
+      and conventions are provided for storing other complex data types.
+
+      The intent_name field provides space for a 15 character (plus 0 byte)
+      name string for the type of data stored. Examples:
+       - intent_code = NIFTI_INTENT_ESTIMATE; intent_name = "T1";
+          could be used to signify that the voxel values are estimates of the
+          NMR parameter T1.
+       - intent_code = NIFTI_INTENT_TTEST; intent_name = "House";
+          could be used to signify that the voxel values are t-statistics
+          for the significance of activation response to a House stimulus.
+       - intent_code = NIFTI_INTENT_DISPVECT; intent_name = "ToMNI152";
+          could be used to signify that the voxel values are a displacement
+          vector that transforms each voxel (x,y,z) location to the
+          corresponding location in the MNI152 standard brain.
+       - intent_code = NIFTI_INTENT_SYMMATRIX; intent_name = "DTI";
+          could be used to signify that the voxel values comprise a diffusion
+          tensor image.
+
+      If no data name is implied or needed, intent_name[0] should be set to 0.
 
 
 

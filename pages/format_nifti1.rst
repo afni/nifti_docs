@@ -47,6 +47,9 @@ tweaks to the format that took place in early 2005.
 Documentation
 =============
 
+This PDF describes NIFTI-1 data: :download:`The NIfTI-1 Data Format
+<media/TheNIfTI1Format2004.pdf>`.
+
 The following are items that provide summaries:
 
 * :download:`OHBM-2004 poster <media/hbm_nifti_2004.pdf>`
