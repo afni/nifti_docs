@@ -173,6 +173,7 @@ data format, such as in the following factors:
 * Maximize scientific opportunities from neuroimaging research
 
 
+.. _whatisnifti_dfwg:
 
 Original DFWG Members
 ===========================

@@ -50,7 +50,7 @@ have already indicated their willingness to adopt the
 solution. Suggestions for membership on the DFWG were broadly
 solicited from the research community.
 
-The original DFWG members are listed :ref:`here <nifti_dfwg>`
+The original DFWG members are listed :ref:`here <whatisnifti_dfwg>`
 
 It should be noted that in no way is the NIfTI-1 format an official
 format whose use is mandated by the NIH. This effort has been made
