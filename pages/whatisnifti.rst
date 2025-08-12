@@ -175,8 +175,8 @@ data format, such as in the following factors:
 
 .. _whatisnifti_dfwg:
 
-Original DFWG Members
-===========================
+Original and early DFWG Members
+=====================================
 
 The Data Format Working Group (DFWG) is charged with arriving at a
 technical solution to the problem of multiple data formats used in
@@ -188,8 +188,8 @@ fMRI-related software have already indicated their willingness to
 adopt the solution. Suggestions for membership on the DFWG were
 broadly solicited from the research community.
 
-The following are the original members of the NIfTI DFWG in 2004, in
-alphabetical order:
+The following are the original and early members (2004-2005-ish?) of
+the NIfTI DFWG, in alphabetical order:
 
 * *Chair:* Stephen C. Strother (Veterans Affairs Medical Center,
   Minneapolis, Minnesota)
@@ -209,14 +209,28 @@ alphabetical order:
     
 * Colin J. Holmes (Silicon Graphics, Inc., Mountain View, California)
     
+* Mark Jenkinson (Oxford University Centre for Functional MRI of the
+  Brain, United Kingdom)
+
+* David Keator (University of California, Irvine)
+
 * Peter Kochunov (University of Texas Health Science Center, San
   Antonio, Texas)
     
+* Jack Lancaster (University of Texas Health Science Center, San
+  Antonio, Texas)
+
 * David E. Rex (University of California, Los Angeles)
     
 * Stephen M. Smith (Oxford University Centre for Functional MRI of the
   Brain, United Kingdom)
     
+* Daniel Valentino (University of California, Los Angeles)
+
+* Bennet Vance (Dartmouth College, Hanover, New Hampshire)
+
+* Robert Vincent (Montreal Neurological Institute, Montreal, Canada)
+
 * Jeffrey B. Woodward (Dartmouth College, Hanover, New Hampshire).
     
 * ex officio: Michael F. Huerta (National Institute of Mental Health,
