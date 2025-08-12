@@ -248,6 +248,118 @@ Unused fields are:
    int glmax;
    int glmin; 
 
+.. _fields_nifti1_ext:
+
+Extensions
+==========================
+
+*From the nifti1.h header file.*
+
+After the end of the 348 byte header (e.g., after the magic field),
+the next 4 bytes are a char array field named "extension". By default,
+all 4 bytes of this array should be set to zero. In a ``.nii`` file, these
+4 bytes will always be present, since the earliest start point for
+the image data is byte #352. In a separate ``.hdr`` file, these bytes may
+or may not be present. If not present (i.e., if the length of the ``.hdr``
+file is 348 bytes), then a NIfTI-1 compliant program should use the
+default value of ``extension={0,0,0,0}``. The first byte (``extension[0]``)
+is the only value of this array that is specified at present. The other
+3 bytes are reserved for future use.
+
+If ``extension[0]`` is nonzero, it indicates that extended header information
+is present in the bytes following the extension array. In a ``.nii`` file,
+this extended header data is before the image data (and vox_offset
+must be set correctly to allow for this). In a ``.hdr`` file, this extended
+data follows extension and proceeds (potentially) to the end of the file.
+
+The format of extended header data is weakly specified. Each extension
+must be an integer multiple of 16 bytes long. The first 8 bytes of each
+extension comprise 2 integers::
+
+   int esize , ecode ;
+
+These values may need to be byte-swapped, as indicated by ``dim[0]`` for
+the rest of the header.
+
+* **esize** is the number of bytes that form the extended header data:
+
+  + esize must be a positive integral multiple of 16
+
+  + this length includes the 8 bytes of esize and ecode themselves
+
+* **ecode** is a non-negative integer that indicates the format of the
+  extended header data that follows:
+
+  + different ecode values are assigned to different developer groups
+
+  + at present, the "registered" values for code are:
+
+    - 0 : unknown private format (not recommended!)
+
+    - 2 : DICOM format (i.e., attribute tags and values)
+
+    - 4 : AFNI group (i.e., ASCII XML-ish elements)
+
+In the interests of interoperability (a primary rationale for NIfTI),
+groups developing software that uses this extension mechanism are
+encouraged to document and publicize the format of their extensions.
+To this end, the NIfTI DFWG will assign even numbered codes upon request
+to groups submitting at least rudimentary documentation for the format
+of their extension.
+The assigned codes and documentation will be posted on the NIfTI
+website. All odd values of ecode (and 0) will remain unassigned;
+at least, until the even ones are used up, when we get to 2,147,483,646.
+
+Note that the other contents of the extended header data section are
+totally unspecified by the NIfTI-1 standard. In particular, if binary
+data is stored in such a section, its byte order is not necessarily
+the same as that given by examining ``dim[0]``; it is incumbent on the
+programs dealing with such data to determine the byte order of binary
+extended header data.
+
+Multiple extended header sections are allowed, each starting with an
+esize,ecode value pair. The first esize value, as described above,
+is at bytes ``#352-355`` in the ``.hdr`` or ``.nii`` file 
+(files start at byte ``#0``).
+If this value is positive, then the second (esize2) will be found
+starting at byte ``#352+esize1``, the third (esize3) at 
+byte ``#352+esize1+esize2``,
+et cetera.  Of course, in a .nii file, the value of vox_offset must
+be compatible with these extensions. If a malformed file indicates
+that an extended header data section would run past vox_offset, then
+the entire extended header section should be ignored. In a ``.hdr`` file,
+if an extended header data section would run past the end-of-file,
+that extended header data should also be ignored.
+
+With the above scheme, a program can successively examine the esize
+and ecode values, and skip over each extended header section if the
+program doesn't know how to interpret the data within. Of course, any
+program can simply ignore all extended header sections simply by jumping
+straight to the image data using vox_offset.
+
+Related code from the ``nifti1.h`` file::
+
+   /*! \struct nifti1_extender
+       \brief This structure represents a 4-byte string that should follow the
+              binary nifti_1_header data in a NIFTI-1 header file.  If the char
+              values are {1,0,0,0}, the file is expected to contain extensions,
+              values of {0,0,0,0} imply the file does not contain extensions.
+              Other sequences of values are not currently defined.
+    */
+   struct nifti1_extender { char extension[4] ; } ;
+   typedef struct nifti1_extender nifti1_extender ;
+
+   /*! \struct nifti1_extension
+       \brief Data structure defining the fields of a header extension.
+    */
+   struct nifti1_extension {
+      int    esize ; /*!< size of extension, in bytes (must be multiple of 16) */
+      int    ecode ; /*!< extension code, one of the NIFTI_ECODE_ values       */
+      char * edata ; /*!< raw data, with no byte swapping (length is esize-8)  */
+   } ;
+   typedef struct nifti1_extension nifti1_extension ;
+
+
 
 Field notes
 =============================
