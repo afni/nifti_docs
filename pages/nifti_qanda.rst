@@ -117,6 +117,8 @@ restriction of a 348 byte header to keep compatibility with ANALYZE
 7.5. Most of the space is now taken by new fields, agreed upon by the
 DFWG committee after extensive wrangling.
 
+.. _nifti_qanda_q04:
+
 What is the minimum set of fields required to create a NIfTI-1 header? 
 ------------------------------------------------------------------------
 
