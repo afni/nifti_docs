@@ -360,6 +360,35 @@ Related code from the ``nifti1.h`` file::
    typedef struct nifti1_extension nifti1_extension ;
 
 
+**Extension Mechanism**::
+
+   struct nifti1_extender { 
+   char extension[4] ;         /* 348 */
+   } ;
+
+   extension #1
+   struct nifti1_extension {   /* Data structure defining the fields of a header extension. */
+      int esize;               /* 352 */
+      int ecode ;              /* 356 */
+      char *edata ;            /* 360 */
+   } ;
+
+   extension #2
+   struct nifti1_extension {   /* Data structure defining the fields of a header extension. */
+      int esize;               /* 352 + esize #1 */
+      int ecode ;                                                                    
+      char *edata ;                                                                  
+   } ;
+
+   extension #3
+   struct nifti1_extension {   /* Data structure defining the fields of a header extension. */
+      int esize;               /* 352 + esize #1 + esize #2 */
+      int ecode ;                                                                    
+      char *edata ;                                                                  
+   } ;
+
+\.\.\. and so on...
+
 
 Field notes
 =============================
