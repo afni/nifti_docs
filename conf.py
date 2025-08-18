@@ -183,6 +183,7 @@ html_theme_options = {
     "linkcolor": "#800000", # "#1874CD",
     #"toc_current_text_color" :  "#F2D41E", # too bright yellow on gray
     "headtextcolor": "#000000", #"#800000",
+    "headfont": "local_PT_sans",
     "bodyfont": "local_PT_sans",  
     "fontcssurl" : "local_PT_sans",
     #"headfont": "PT Sans, sans-serif",
